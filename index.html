@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Percentiles & Ordered Data Exploration Tool</title>
+    <style>
+        /* CSS Reset & Color Variables */
+        :root {
+            --bg-main: #f8fafc;
+            --surface-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #334155;
+            --primary-color: #1e40af;
+            --primary-hover: #1e3a8a;
+            --primary-light: #eff6ff;
+            --accent-color: #047857;
+            --accent-light: #ecfdf5;
+            --border-color: #94a3b8;
+            --focus-outline: #2563eb;
+            --highlight-bg: #fef08a;
+            --highlight-border: #ca8a04;
+            --highlight-text: #854d0e;
+            --error-color: #991b1b;
+            --error-bg: #fef2f2;
+            --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+        }
+
+        /* High Contrast Dark Mode */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-main: #0f172a;
+                --surface-bg: #1e293b;
+                --text-main: #f8fafc;
+                --text-muted: #e2e8f0;
+                --primary-color: #60a5fa;
+                --primary-hover: #93c5fd;
+                --primary-light: #1e3a8a;
+                --accent-color: #34d399;
+                --accent-light: #064e3b;
+                --border-color: #64748b;
+                --focus-outline: #93c5fd;
+                --highlight-bg: #854d0e;
+                --highlight-border: #facc15;
+                --highlight-text: #fef08a;
+                --error-color: #fca5a5;
+                --error-bg: #450a0a;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 1.5rem;
+            max-width: 1250px;
+            margin: 0 auto;
+        }
+
+        /* WCAG Visible Focus Indicators */
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible,
+        .data-item:focus-visible,
+        .focusable-container:focus-visible {
+            outline: 3px solid var(--focus-outline);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        p.intro {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 900px) {
+            .layout-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .full-width {
+                grid-column: 1 / -1;
+            }
+        }
+
+        .card {
+            background-color: var(--surface-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 1.35rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .grid-3col {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
+
+        .help-text {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--surface-bg);
+            color: var(--text-main);
+            font-size: 1rem;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: 2px solid var(--primary-color);
+            padding: 0.75rem 1.25rem;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        .alert-error {
+            background-color: var(--error-bg);
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
+        }
+
+        .alert-result {
+            background-color: var(--accent-light);
+            color: var(--text-main);
+            border: 1px solid var(--accent-color);
+            margin-top: 0.75rem;
+        }
+
+        /* Ordered Data Grid & Elements */
+        .data-grid-container {
+            max-height: 320px;
+            overflow-y: auto;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            background-color: var(--bg-main);
+        }
+
+        .data-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .data-item {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.4rem 0.65rem;
+            background-color: var(--surface-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s ease, border-color 0.1s ease, background-color 0.1s ease;
+            min-width: 55px;
+        }
+
+        .data-item .item-rank {
+            font-size: 0.7rem;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .data-item:hover,
+        .data-item.active-hover {
+            border-color: var(--primary-color);
+            background-color: var(--primary-light);
+            transform: scale(1.08);
+            z-index: 2;
+        }
+
+        .data-item.highlighted {
+            background-color: var(--highlight-bg);
+            border-color: var(--highlight-border);
+            color: var(--highlight-text);
+            font-weight: 800;
+            transform: scale(1.1);
+        }
+
+        /* Interactive Readout Banner */
+        .readout-box {
+            background-color: var(--primary-light);
+            border: 2px solid var(--primary-color);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .readout-box strong {
+            color: var(--primary-color);
+        }
+
+        footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Percentiles & Ordered Data Exploration Tool</h1>
+        <p class="intro">Generate or upload discrete or continuous datasets, inspect ordered values, hover or focus over data points to reveal percentiles, and calculate values or percentile ranks interactively.</p>
+    </header>
+
+    <main class="layout-grid">
+        <!-- Section 1: Data Input & Configuration -->
+        <section class="card" aria-labelledby="heading-data-input">
+            <h2 id="heading-data-input">1. Data Selection & Generation</h2>
+
+            <div class="form-group">
+                <label for="data-source-select">Input Method</label>
+                <select id="data-source-select">
+                    <option value="generator">Generate Random Dataset</option>
+                    <option value="manual">Type or Paste Raw Values</option>
+                    <option value="file">Upload File (.txt or .csv)</option>
+                </select>
+            </div>
+
+            <!-- Panel: Random Generator -->
+            <div id="panel-generator">
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label for="data-type-select">Data Type</label>
+                        <select id="data-type-select">
+                            <option value="discrete">Discrete (Integers)</option>
+                            <option value="continuous">Continuous (Decimals)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="gen-count">Sample Size (n)</label>
+                        <input type="number" id="gen-count" min="5" max="300" value="40">
+                    </div>
+                </div>
+
+                <div class="grid-2col">
+                    <div class="form-group">
+                        <label for="gen-min">Minimum Value</label>
+                        <input type="number" id="gen-min" step="any" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="gen-max">Maximum Value</label>
+                        <input type="number" id="gen-max" step="any" value="100">
+                    </div>
+                </div>
+
+                <div class="form-group" id="group-decimals" style="display:none;">
+                    <label for="gen-decimals">Decimal Precision</label>
+                    <select id="gen-decimals">
+                        <option value="1">1 Decimal Place (e.g. 12.3)</option>
+                        <option value="2" selected>2 Decimal Places (e.g. 12.34)</option>
+                    </select>
+                </div>
+
+                <button type="button" id="btn-generate">Generate Random Sample</button>
+            </div>
+
+            <!-- Panel: Manual Raw Text -->
+            <div id="panel-manual" style="display:none;">
+                <div class="form-group">
+                    <label for="manual-data-input">Enter Discrete or Continuous Values</label>
+                    <div class="help-text">Separate numbers with commas, spaces, or new lines.</div>
+                    <textarea id="manual-data-input" placeholder="e.g., 14, 22, 25.5, 31, 42.8, 50, 67, 89"></textarea>
+                </div>
+                <button type="button" id="btn-parse-manual">Process Input Data</button>
+            </div>
+
+            <!-- Panel: File Upload -->
+            <div id="panel-file" style="display:none;">
+                <div class="form-group">
+                    <label for="file-input">Upload Text or CSV File</label>
+                    <div class="help-text">Select a plain text (.txt) or comma-separated (.csv) data file.</div>
+                    <input type="file" id="file-input" accept=".csv, .txt">
+                </div>
+            </div>
+
+            <!-- Live Region & Errors -->
+            <div id="live-announcer" class="sr-only" aria-live="polite"></div>
+            <div id="error-message" class="alert alert-error" style="display:none;" role="alert"></div>
+        </section>
+
+        <!-- Section 2: Interactive Percentile Calculations -->
+        <section class="card" aria-labelledby="heading-calc">
+            <h2 id="heading-calc">2. Interactive Percentile Queries</h2>
+
+            <!-- Query A: Find Value from Percentile -->
+            <div class="form-group">
+                <label for="input-target-percentile">Find Value for Target Percentile (k)</label>
+                <div class="help-text">Enter a percentile between 0 and 100 (e.g., 75 for 75th percentile / Q3).</div>
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="number" id="input-target-percentile" min="0" max="100" step="any" placeholder="e.g. 75">
+                    <button type="button" id="btn-calc-val" style="width:auto;">Find Value</button>
+                </div>
+                <div id="result-percentile-to-val" class="alert alert-result" style="display:none;"></div>
+            </div>
+
+            <hr style="margin: 1.25rem 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <!-- Query B: Find Percentile Rank from Value -->
+            <div class="form-group">
+                <label for="input-target-value">Find Percentile Rank for Any Value (x)</label>
+                <div class="help-text">Enter any value (contained in dataset or custom) to find its percentile rank.</div>
+                <div style="display:flex; gap:0.5rem;">
+                    <input type="number" id="input-target-value" step="any" placeholder="e.g. 45.5">
+                    <button type="button" id="btn-calc-percentile" style="width:auto;">Find Percentile</button>
+                </div>
+                <div id="result-val-to-percentile" class="alert alert-result" style="display:none;"></div>
+            </div>
+        </section>
+
+        <!-- Section 3: Ordered Dataset Display & Mouseover Percentile Inspector -->
+        <section class="card full-width" aria-labelledby="heading-ordered">
+            <h2 id="heading-ordered">3. Ordered Dataset & Hover Percentile Inspector</h2>
+
+            <div id="readout-hover" class="readout-box" aria-live="polite">
+                <strong>Hover or Focus Inspector:</strong> Move your cursor over any value in the grid below to inspect its rank and exact percentile.
+            </div>
+
+            <div class="help-text" style="margin-bottom: 0.75rem;">
+                Data values sorted from smallest to largest ($n = <span id="sample-size-display">0</span>$). Use cursor or Tab key to navigate values.
+            </div>
+
+            <div class="data-grid-container" tabIndex="0" aria-label="Container for ordered data values. Scroll vertically if necessary.">
+                <div class="data-grid" id="data-grid-items">
+                    <!-- Dynamic Interactive Data Chips -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Introductory Statistics Educational Application | Designed to meet WCAG 2.2 AA Standards.</p>
+    </footer>
+
+    <script>
+        // State variables
+        let rawData = [];
+        let sortedData = [];
+        let highlightedIndices = []; // Updated to support array of highlighted indices (e.g. ties/duplicate values)
+
+        // DOM Elements
+        const elements = {
+            dataSourceSelect: document.getElementById('data-source-select'),
+            dataTypeSelect: document.getElementById('data-type-select'),
+            panelGenerator: document.getElementById('panel-generator'),
+            panelManual: document.getElementById('panel-manual'),
+            panelFile: document.getElementById('panel-file'),
+            groupDecimals: document.getElementById('group-decimals'),
+            genMin: document.getElementById('gen-min'),
+            genMax: document.getElementById('gen-max'),
+            genCount: document.getElementById('gen-count'),
+            genDecimals: document.getElementById('gen-decimals'),
+            btnGenerate: document.getElementById('btn-generate'),
+            manualDataInput: document.getElementById('manual-data-input'),
+            btnParseManual: document.getElementById('btn-parse-manual'),
+            fileInput: document.getElementById('file-input'),
+            inputTargetPercentile: document.getElementById('input-target-percentile'),
+            btnCalcVal: document.getElementById('btn-calc-val'),
+            resultPercentileToVal: document.getElementById('result-percentile-to-val'),
+            inputTargetValue: document.getElementById('input-target-value'),
+            btnCalcPercentile: document.getElementById('btn-calc-percentile'),
+            resultValToPercentile: document.getElementById('result-val-to-percentile'),
+            readoutHover: document.getElementById('readout-hover'),
+            sampleSizeDisplay: document.getElementById('sample-size-display'),
+            dataGridItems: document.getElementById('data-grid-items'),
+            errorMessage: document.getElementById('error-message'),
+            liveAnnouncer: document.getElementById('live-announcer')
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            initEvents();
+            generateData();
+        });
+
+        function initEvents() {
+            elements.dataSourceSelect.addEventListener('change', (e) => {
+                const method = e.target.value;
+                elements.panelGenerator.style.display = method === 'generator' ? 'block' : 'none';
+                elements.panelManual.style.display = method === 'manual' ? 'block' : 'none';
+                elements.panelFile.style.display = method === 'file' ? 'block' : 'none';
+                if (method === 'generator') generateData();
+            });
+
+            elements.dataTypeSelect.addEventListener('change', (e) => {
+                elements.groupDecimals.style.display = e.target.value === 'continuous' ? 'block' : 'none';
+            });
+
+            elements.btnGenerate.addEventListener('click', generateData);
+            elements.btnParseManual.addEventListener('click', parseManualInput);
+            elements.fileInput.addEventListener('change', handleFileUpload);
+            elements.btnCalcVal.addEventListener('click', calculateValueFromPercentile);
+            elements.btnCalcPercentile.addEventListener('click', calculatePercentileFromValue);
+        }
+
+        function announce(text) {
+            elements.liveAnnouncer.textContent = text;
+        }
+
+        function showError(msg) {
+            if (msg) {
+                elements.errorMessage.textContent = msg;
+                elements.errorMessage.style.display = 'block';
+                announce("Error: " + msg);
+            } else {
+                elements.errorMessage.textContent = '';
+                elements.errorMessage.style.display = 'none';
+            }
+        }
+
+        // Generate Dataset
+        function generateData() {
+            showError(null);
+            const isContinuous = elements.dataTypeSelect.value === 'continuous';
+            const count = parseInt(elements.genCount.value, 10);
+            const min = parseFloat(elements.genMin.value);
+            const max = parseFloat(elements.genMax.value);
+
+            if (isNaN(count) || count < 5 || count > 300) {
+                showError("Sample size (n) must be between 5 and 300.");
+                return;
+            }
+
+            if (isNaN(min) || isNaN(max) || min >= max) {
+                showError("Minimum value must be strictly less than maximum value.");
+                return;
+            }
+
+            rawData = [];
+            const decimals = isContinuous ? parseInt(elements.genDecimals.value, 10) : 0;
+            const factor = Math.pow(10, decimals);
+
+            for (let i = 0; i < count; i++) {
+                let val = min + Math.random() * (max - min);
+                if (isContinuous) {
+                    val = Math.round(val * factor) / factor;
+                } else {
+                    val = Math.floor(val);
+                }
+                rawData.push(val);
+            }
+
+            processDataset();
+            announce(`Generated dataset with ${rawData.length} values.`);
+        }
+
+        function parseManualInput() {
+            showError(null);
+            const text = elements.manualDataInput.value;
+            const tokens = text.split(/[\s,]+/);
+
+            const parsed = tokens.map(t => parseFloat(t)).filter(n => !isNaN(n) && isFinite(n));
+            if (parsed.length === 0) {
+                showError("No valid numerical values found in input.");
+                return;
+            }
+            rawData = parsed;
+            processDataset();
+            announce(`Processed ${rawData.length} numerical values.`);
+        }
+
+        function handleFileUpload(e) {
+            showError(null);
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const text = evt.target.result;
+                const tokens = text.split(/[\s,]+/);
+
+                const parsed = tokens.map(t => parseFloat(t)).filter(n => !isNaN(n) && isFinite(n));
+                if (parsed.length === 0) {
+                    showError("No valid numerical data found in file.");
+                    return;
+                }
+                rawData = parsed;
+                processDataset();
+                announce(`Loaded ${rawData.length} values from file.`);
+            };
+            reader.readAsText(file);
+        }
+
+        // Process and Render Ordered Data Grid
+        function processDataset() {
+            sortedData = [...rawData].sort((a, b) => a - b);
+            elements.sampleSizeDisplay.textContent = sortedData.length;
+            highlightedIndices = [];
+
+            elements.resultPercentileToVal.style.display = 'none';
+            elements.resultValToPercentile.style.display = 'none';
+
+            renderDataGrid();
+        }
+
+        function renderDataGrid() {
+            elements.dataGridItems.innerHTML = '';
+
+            sortedData.forEach((val, idx) => {
+                const item = document.createElement('div');
+                item.className = 'data-item';
+                item.tabIndex = 0;
+                item.setAttribute('role', 'button');
+                item.setAttribute('aria-label', `Value ${val}, Position ${idx + 1} of ${sortedData.length}`);
+
+                if (highlightedIndices.includes(idx)) {
+                    item.classList.add('highlighted');
+                }
+
+                const valSpan = document.createElement('span');
+                valSpan.textContent = val;
+
+                const rankSpan = document.createElement('span');
+                rankSpan.className = 'item-rank';
+                rankSpan.textContent = `#${idx + 1}`;
+
+                item.appendChild(valSpan);
+                item.appendChild(rankSpan);
+
+                // Hover / Mouseover Events
+                item.addEventListener('mouseenter', () => updateReadout(idx));
+                item.addEventListener('mouseleave', clearReadout);
+
+                // Keyboard Focus Events
+                item.addEventListener('focus', () => updateReadout(idx));
+                item.addEventListener('blur', clearReadout);
+
+                elements.dataGridItems.appendChild(item);
+            });
+        }
+
+        // Standard Percentile Rank Formula for a Data Point:
+        // P = ( (count_below + 0.5 * count_equal) / N ) * 100
+        function getPercentileOfIndex(idx) {
+            const val = sortedData[idx];
+            const N = sortedData.length;
+            let countBelow = 0;
+            let countEqual = 0;
+
+            sortedData.forEach(v => {
+                if (v < val) countBelow++;
+                else if (v === val) countEqual++;
+            });
+
+            const percentile = ((countBelow + (0.5 * countEqual)) / N) * 100;
+            return {
+                val: val,
+                index: idx,
+                countBelow: countBelow,
+                countEqual: countEqual,
+                percentile: percentile.toFixed(1)
+            };
+        }
+
+        function updateReadout(idx) {
+            const info = getPercentileOfIndex(idx);
+            elements.readoutHover.innerHTML = `
+                <strong>Hover Inspector:</strong> Data Value: <strong>${info.val}</strong> (Position #${idx + 1} of ${sortedData.length})<br>
+                Percentile Rank: <strong>${info.percentile}th percentile</strong> 
+                <span style="font-size:0.9rem; color:var(--text-muted);">(${info.countBelow} values below, ${info.countEqual} equal to this value)</span>
+            `;
+        }
+
+        function clearReadout() {
+            if (highlightedIndices.length > 0) {
+                updateReadout(highlightedIndices[0]);
+                return;
+            }
+            elements.readoutHover.innerHTML = `
+                <strong>Hover or Focus Inspector:</strong> Move your cursor over any value in the grid below to inspect its rank and exact percentile.
+            `;
+        }
+
+        // Query A: Find Value for Target Percentile k (Linear Interpolation Method)
+        function calculateValueFromPercentile() {
+            showError(null);
+            const k = parseFloat(elements.inputTargetPercentile.value);
+
+            if (isNaN(k) || k < 0 || k > 100) {
+                showError("Target percentile (k) must be between 0 and 100.");
+                return;
+            }
+
+            const N = sortedData.length;
+            if (N === 0) return;
+
+            // Interpolation method: L = (k / 100) * (N - 1)
+            const indexFloat = (k / 100) * (N - 1);
+            const lowerIdx = Math.floor(indexFloat);
+            const upperIdx = Math.ceil(indexFloat);
+            const weight = indexFloat - lowerIdx;
+
+            let resultVal = sortedData[lowerIdx] + weight * (sortedData[upperIdx] - sortedData[lowerIdx]);
+            resultVal = Math.round(resultVal * 1000) / 1000;
+
+            const targetIndex = Math.round(indexFloat);
+            highlightedIndices = [targetIndex];
+            renderDataGrid();
+
+            // Scroll highlighted element into view
+            const items = elements.dataGridItems.children;
+            if (items[targetIndex]) {
+                items[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            elements.resultPercentileToVal.style.display = 'block';
+            elements.resultPercentileToVal.innerHTML = `
+                The <strong>${k}th percentile ($P_{${k}}$)</strong> is approximately <strong>${resultVal}</strong>.<br>
+                <span style="font-size:0.9rem; color:var(--text-muted);">Closest ordered data index position: #${targetIndex + 1} (Highlighted yellow in grid).</span>
+            `;
+            announce(`The ${k}th percentile value is ${resultVal}.`);
+        }
+
+        // Query B: Find Percentile Rank for Any Value x (Highlights value if present in dataset)
+        function calculatePercentileFromValue() {
+            showError(null);
+            const x = parseFloat(elements.inputTargetValue.value);
+
+            if (isNaN(x)) {
+                showError("Please enter a valid numerical value to calculate its percentile.");
+                return;
+            }
+
+            const N = sortedData.length;
+            if (N === 0) return;
+
+            let countBelow = 0;
+            let countEqual = 0;
+            highlightedIndices = [];
+
+            sortedData.forEach((v, idx) => {
+                if (v < x) {
+                    countBelow++;
+                } else if (v === x) {
+                    countEqual++;
+                    highlightedIndices.push(idx); // Collect all matching value indices to highlight
+                }
+            });
+
+            renderDataGrid();
+
+            const inDataset = countEqual > 0;
+
+            if (inDataset) {
+                // Scroll the first highlighted item into view
+                const items = elements.dataGridItems.children;
+                if (items[highlightedIndices[0]]) {
+                    items[highlightedIndices[0]].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+
+            // Percentile formula: P = (count_below + 0.5 * count_equal) / N * 100
+            const percentile = ((countBelow + (0.5 * countEqual)) / N) * 100;
+            const roundedP = percentile.toFixed(1);
+
+            elements.resultValToPercentile.style.display = 'block';
+            elements.resultValToPercentile.innerHTML = `
+                Value <strong>${x}</strong> ${inDataset ? `is in the dataset (${countEqual} match${countEqual > 1 ? 'es' : ''} highlighted yellow in grid below)` : 'is NOT in the dataset'}.<br>
+                Calculated Percentile Rank: <strong>${roundedP}th percentile</strong>.<br>
+                <span style="font-size:0.9rem; color:var(--text-muted);">(${countBelow} values smaller, ${countEqual} values equal out of N = ${N})</span>
+            `;
+            announce(`Value ${x} has a percentile rank of ${roundedP} percent.${inDataset ? ' Value is highlighted in dataset.' : ''}`);
+        }
+    </script>
+</body>
+</html>
